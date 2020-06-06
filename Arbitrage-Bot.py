@@ -14,6 +14,27 @@ myBittrex = Bittrex(settings.BITTREX_API_KEY, settings.BITTREX_API_SECRET, api_v
 #End of constants
 
 #Functions
+def print_title():
+    print("-"*30)
+    print("Welcome to the L8nit3 Arb Bot")
+    print("-"*30)
+    print("1)Enter Settings")
+    print("2)Run Bot")
+    print("3).......")
+    print("4)PROFIT! $$")
+    print("_"*30)
+    print("Debug level:", settings.DEBUG)
+    print("Dry run mode active:", settings.DRY_RUN)
+    if(settings.GAIN_BTC):
+        print("Stack sats mode: gain BTC.")
+    else:
+        print("Stack {0}mode: gain {0}".format(settiings.COIN))
+    print("Liquidity Module Active:", settings.LIQUIDITY_MODULE)
+    print("Withdrawls Enabled:", settings.ENABLE_WITHDRAWLS)
+    print("_"*30)
+    print("")
+    time.sleep(4)
+
 def get_trex_balance():
     '''Ensure account has funds to opperate script'''
     try:
@@ -107,12 +128,11 @@ def get_prices():
 
 def buy_trex(value):
     '''Buy at Bittrex'''
-    total = value*get_prices()[1]
     try:
         if(not settings.GAIN_BTC):
-            buy = myBittrex.buy_limit(market=make_coin_pair()[0], quantity=total, rate=get_prices()[1]+0.00000001)
+            buy = myBittrex.buy_limit(market=make_coin_pair()[0], quantity=value, rate=get_prices()[1]+0.00000001)
         else:
-            buy = myBittrex.buy_limit(market=make_coin_pair()[0], quantity=settings.AMOUNT_TO_TRADE+1, rate=get_prices()[1]+0.00000001)
+            buy = myBittrex.buy_limit(market=make_coin_pair()[0], quantity=settings.AMOUNT_TO_TRADE+settings.WITHDRAWL_FEE_COIN, rate=get_prices()[1]+0.00000001)
         print(buy)
     except Exception as error:
         if(settings.DEBUG == 2):
@@ -133,12 +153,11 @@ def sell_trex():
 
 def buy_nance(value):
     '''Buy coins at binance'''
-    total = value*get_prices()[3]
     try:
         if(not settings.GAIN_BTC):
-            buy = myBinance.order_market_buy(symbol=make_coin_pair()[1],quantity=total)
+            buy = myBinance.order_market_buy(symbol=make_coin_pair()[1],quantity=value)
         else:
-            buy = myBinance.order_market_buy(symbol=make_coin_pair()[1],quantity=settings.AMOUNT_TO_TRADE+1)
+            buy = myBinance.order_market_buy(symbol=make_coin_pair()[1],quantity=settings.AMOUNT_TO_TRADE+settings.WITHDRAWL_FEE_COIN)
         print(buy)
     except Exception as error:
         if(settings.DEBUG == 2):
@@ -189,8 +208,8 @@ def backend_logic():
         percent2 = (diff2/nance_ask)*100
         print("")
         print("Pricing Debug Stats:")
-        print("Binance Bid: {0} Bittrex Ask: {1} Potential Gain={2}%".format(nance_bid, trex_ask, round(percent2, 2)))
-        print("Bittrex Bid: {0} Binance Ask: {1} Potential Gain={2}%".format(trex_bid, nance_ask, round(percent1, 2)))
+        print("Binance Sell: {0} | Bittrex Buy: {1} Potential Gain={2}%".format(nance_bid, trex_ask, round(percent2, 2)))
+        print("Bittrex Sell: {0} | Binance Buy: {1} Potential Gain={2}%".format(trex_bid, nance_ask, round(percent1, 2)))
         print("")
         
     if(nance_bid>trex_ask): #Binance market sell price > bittrex market buy price
@@ -205,9 +224,12 @@ def backend_logic():
             print("")
         if(percent > settings.DESIRED_PERCENT_GAIN and percent > 0):
             now = datetime.datetime.now()
-            value = settings.AMOUNT_TO_TRADE*nance_bid
+            value = settings.AMOUNT_TO_TRADE*(1.0+(settings.DESIRED_PERCENT_GAIN/100))
             if(enough_balance_to_run() or settings.DRY_RUN):
-                liquid = check_liquidity(Binance, Bittrex)
+                if(settings.LIQUIDITY_MODULE):
+                    liquid = check_liquidity(Binance, Bittrex)
+                else:
+                    liquid = 0
                 if(liquid > 0):
                     if(not settings.DRY_RUN):
                         sell_nance()
@@ -239,9 +261,12 @@ def backend_logic():
             print("Needs to be: {0}%".format(settings.DESIRED_PERCENT_GAIN))
             print("")
         if(percent > settings.DESIRED_PERCENT_GAIN and percent > 0):
-            value = settings.AMOUNT_TO_TRADE*trex_bid
+            value = settings.AMOUNT_TO_TRADE*(1.0+(settings.DESIRED_PERCENT_GAIN/100))
             if(enough_balance_to_run() or settings.DRY_RUN):
-                liquid = check_liquidity(Binance, Bittrex)
+                if(settings.LIQUIDITY_MODULE):
+                    liquid = check_liquidity(Binance, Bittrex)
+                else:
+                    liquid = 0
                 if(liquid > 0):
                     if(not settings.DRY_RUN):
                         sell_trex()
@@ -262,7 +287,7 @@ def backend_logic():
                     print("Trade conditions met, but lacking liquidity in orderbooks")
     else:
         if(settings.DRY_RUN or settings.DEBUG > 0):
-            print("Waiting for: +{0}% Bid/Ask price difference.".format(settings.DESIRED_PERCENT_GAIN))
+            print("Waiting for positive Bid/Ask price difference")
             print("")
     return traded
 
@@ -358,34 +383,13 @@ def main(COUNTER, TRADE_COUNTER):
                     equalize_balances()
                 balance_debug()
         elif(traded == 0):
-            print("Sleeping 3, then re-run")
             time.sleep(settings.SLEEP_BETWEEN_CYCLE)
     else:
         print("Please Check Balances!")
 #End Of Functions
 
 #Print Title, And Run
-print("-"*30)
-print("Welcome to the L8nit3 Arb Bot")
-print("-"*30)
-print("")
-print("1)Enter Settings")
-print("2)Run Bot")
-print("3).......")
-print("4)PROFIT! $$")
-print("")
-print("_"*30)
-print("")
-time.sleep(4)
-if(settings.GAIN_BTC):
-    print("Stack sats mode: gain BTC.")
-else:
-    print("Stack", settings.COIN, "mode: gain", settings.COIN)
-print("Dry run mode active:", settings.DRY_RUN)
-print("Liquidity Module: Active")
-print("Withdrawls Enabled:", settings.ENABLE_WITHDRAWLS)
-print("Debug level:", settings.DEBUG)
-print("")
+print_title()
 btc_price = myBinance.get_ticker(symbol=make_coin_pair()[1])['askPrice']
 btc_amount = (float(btc_price)*float(settings.AMOUNT_TO_TRADE))*settings.DESIRED_CYCLES
 print("needed btc per account:", round(btc_amount, 8))
@@ -399,5 +403,6 @@ while True:
         main(COUNTER, TRADE_COUNTER)
         COUNTER = COUNTER+1
     except:
+        print("Script crashed, retrying......")
+        print_title()
         main(COUNTER, TRADE_COUNTER)
-        COUNTER = COUNTER+1
