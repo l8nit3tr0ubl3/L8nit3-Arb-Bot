@@ -61,7 +61,7 @@ def balance_debug():
 
 def enough_balance_to_run():
     '''Check balances and see if there is enough settings.COIN/btc'''
-    btc_price = myBinance.get_ticker(symbol=settings.COIN_PAIR_BINANCE)['askPrice']
+    btc_price = myBinance.get_ticker(symbol=make_coin_pair()[1])['askPrice']
     needed_btc = float((float(btc_price)*float(settings.AMOUNT_TO_TRADE))*settings.DESIRED_CYCLES)
     needed_coin = float(float(settings.AMOUNT_TO_TRADE)*settings.DESIRED_CYCLES)
     is_enough = True
@@ -71,6 +71,12 @@ def enough_balance_to_run():
        float(get_trex_balance()[1])<needed_coin):
         is_enough = False
     return is_enough
+
+def make_coin_pair():
+    coin_symbol = settings.COIN
+    bittrex_pair = "BTC-" + coin_symbol
+    binance_pair = coin_symbol + "BTC"
+    return bittrex_pair, binance_pair
 
 def remove_exponent(value):
     '''Change 1e10 style numbers to satoshi'''
@@ -82,8 +88,8 @@ def remove_exponent(value):
 def get_prices():
     '''Check settings.COIN price at both exchanges'''
     try:
-        nance_ask = float(myBinance.get_ticker(symbol=settings.COIN_PAIR_BINANCE)['askPrice'])
-        nance_bid = float(myBinance.get_ticker(symbol=settings.COIN_PAIR_BINANCE)['bidPrice'])
+        nance_ask = float(myBinance.get_ticker(symbol=make_coin_pair()[1])['askPrice'])
+        nance_bid = float(myBinance.get_ticker(symbol=make_coin_pair()[1])['bidPrice'])
     except Exception as error:
         if(settings.DEBUG == 2):
             print("Error occurred Binance get_prices:", error)
@@ -91,8 +97,8 @@ def get_prices():
             pass
 
     try:
-        trex_ask = float(myBittrex.get_ticker(settings.COIN_PAIR_BITTREX)['result']['Ask'])
-        trex_bid = float(myBittrex.get_ticker(settings.COIN_PAIR_BITTREX)['result']['Bid'])
+        trex_ask = float(myBittrex.get_ticker(make_coin_pair()[0])['result']['Ask'])
+        trex_bid = float(myBittrex.get_ticker(make_coin_pair()[0])['result']['Bid'])
     except Exception as error:
         if(settings.DEBUG == 2):
             print("Error occurred Bittrex get_prices:", error)
@@ -106,9 +112,9 @@ def buy_trex(value):
     total = value*get_prices()[1]
     try:
         if(not settings.GAIN_BTC):
-            buy = myBittrex.buy_limit(market=settings.COIN_PAIR_BITTREX, quantity=total, rate=get_prices()[1]+0.00000001)
+            buy = myBittrex.buy_limit(market=make_coin_pair()[0], quantity=total, rate=get_prices()[1]+0.00000001)
         else:
-            buy = myBittrex.buy_limit(market=settings.COIN_PAIR_BITTREX, quantity=settings.AMOUNT_TO_TRADE+1, rate=get_prices()[1]+0.00000001)
+            buy = myBittrex.buy_limit(market=make_coin_pair()[0], quantity=settings.AMOUNT_TO_TRADE+1, rate=get_prices()[1]+0.00000001)
         print(buy)
     except Exception as error:
         if(settings.DEBUG == 2):
@@ -119,7 +125,7 @@ def buy_trex(value):
 def sell_trex():
     '''Sell at Bittrex'''
     try:
-        sell = myBittrex.sell_limit(market=settings.COIN_PAIR_BITTREX, quantity=settings.AMOUNT_TO_TRADE, rate=get_prices()[2]-0.00000001)
+        sell = myBittrex.sell_limit(market=make_coin_pair()[0], quantity=settings.AMOUNT_TO_TRADE, rate=get_prices()[2]-0.00000001)
         print(sell)
     except Exception as error:
         if(settings.DEBUG == 2):
@@ -132,9 +138,9 @@ def buy_nance(value):
     total = value*get_prices()[3]
     try:
         if(not settings.GAIN_BTC):
-            buy = myBinance.order_market_buy(symbol=settings.COIN_PAIR_BINANCE,quantity=total)
+            buy = myBinance.order_market_buy(symbol=make_coin_pair()[1],quantity=total)
         else:
-            buy = myBinance.order_market_buy(symbol=settings.COIN_PAIR_BINANCE,quantity=settings.AMOUNT_TO_TRADE+1)
+            buy = myBinance.order_market_buy(symbol=make_coin_pair()[1],quantity=settings.AMOUNT_TO_TRADE+1)
         print(buy)
     except Exception as error:
         if(settings.DEBUG == 2):
@@ -145,7 +151,7 @@ def buy_nance(value):
 def sell_nance():
     '''Sell coins at binance'''
     try:
-        sell = myBinance.order_market_sell(symbol=settings.COIN_PAIR_BINANCE,quantity=settings.AMOUNT_TO_TRADE)
+        sell = myBinance.order_market_sell(symbol=make_coin_pair()[1],quantity=settings.AMOUNT_TO_TRADE)
         print(sell)
     except Exception as error:
         if(settings.DEBUG == 2):
@@ -186,15 +192,15 @@ def backend_logic():
         print("Binance Bid:", nance_bid)
         print("Bittrex Bid:", trex_bid)
         print("")
-    
-    if(nance_bid>trex_bid):
+        
+    if(nance_bid>trex_ask): #Binance market sell price > bittrex market buy price
         diff = nance_bid-trex_ask
-        percent = (diff/trex_ask)*100
+        percent = (diff/nance_ask)*100
         Binance = 1
         Bittrex = 0
         if(settings.DRY_RUN or settings.DEBUG > 0):
-            print("Binance Market Sell Price > Bittrex Market Sell Price")
-            print("Difference between Binance Sell and Bittrex Buy Price:", round(percent, 2), "%")
+            print("Binance Market SELL Price > Bittrex Market BUY Price")
+            print("Difference between Binance SELL and Bittrex BUY Price:", round(percent, 2), "%")
             print("Needs to be:", settings.DESIRED_PERCENT_GAIN, "%")
             print("")
         if(percent > settings.DESIRED_PERCENT_GAIN and percent > 0):
@@ -221,14 +227,14 @@ def backend_logic():
                 else:
                     print("Trade conditions met, but lacking liquidity in orderbooks")
         
-    elif(trex_bid>nance_bid):
+    elif(trex_bid>nance_ask): # IF bittrex market sell price > binance market buy
         diff = trex_bid-nance_ask
-        percent = (diff/nance_ask)*100
+        percent = (diff/trex_ask)*100
         Binance = 0
         Bittrex = 1
         if(settings.DRY_RUN or settings.DEBUG > 0):
-            print("Bittrex Market Sell Price > Binance Market Sell Price")
-            print("Difference between Bittrex Sell and Binance Buy Price:", round(percent, 2), "%")
+            print("Bittrex Market SELL Price > Binance Market BUY Price")
+            print("Difference between Bittrex SELL and Binance BUY Price:", round(percent, 2), "%")
             print("Needs to be:", settings.DESIRED_PERCENT_GAIN, "%")
             print("")
         if(percent > settings.DESIRED_PERCENT_GAIN and percent > 0):
@@ -254,9 +260,7 @@ def backend_logic():
                     print("Trade conditions met, but lacking liquidity in orderbooks")
     else:
         if(settings.DRY_RUN or settings.DEBUG > 0):
-            print("Bittrex = Binance")
-            print("Difference: 0%")
-            print("Needs to be:", settings.DESIRED_PERCENT_GAIN, "%")
+            print("Waiting for:", settings.DESIRED_PERCENT_GAIN, "% Bid/Ask price difference.")
             print("")
     return traded
 
@@ -380,7 +384,7 @@ print("Liquidity Module: Active")
 print("Withdrawls Enabled:", settings.ENABLE_WITHDRAWLS)
 print("Debug level:", settings.DEBUG)
 print("")
-btc_price = myBinance.get_ticker(symbol=settings.COIN_PAIR_BINANCE)['askPrice']
+btc_price = myBinance.get_ticker(symbol=make_coin_pair()[1])['askPrice']
 btc_amount = (float(btc_price)*float(settings.AMOUNT_TO_TRADE))*settings.DESIRED_CYCLES
 print("needed btc per account:", round(btc_amount, 8))
 print("needed", settings.COIN, " per account:", float(settings.AMOUNT_TO_TRADE)*settings.DESIRED_CYCLES)
