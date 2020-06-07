@@ -19,7 +19,8 @@ displayed for debugging purposes.
 - Liquidity module, only trade if orderbook has sufficient liquidity to make BOTH trades.    
 - Flip-Mode: Once a trade happens, do not trade again until opposite trade can occur.   
 (eg. Bought Binance, wait untill buy Bittrex. Avoid needing to equalize balances.)  
-- Check multiple coin pairs in one instance.  
+- Check multiple coin pairs in one instance. 
+- Profit-tracking per coin. (percent_earned_per_trade/2 to account for both account balances)  
 
 # Coming Soon:
 ##
