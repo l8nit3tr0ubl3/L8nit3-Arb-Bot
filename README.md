@@ -21,6 +21,7 @@ displayed for debugging purposes.
 (eg. Bought Binance, wait untill buy Bittrex. Avoid needing to equalize balances.)  
 - Check multiple coin pairs in one instance. 
 - Profit-tracking per coin. (percent_earned_per_trade/2 to account for both account balances)  
+- Accounts for trading fees in percentages displayed and in backend calculations  
 
 # Coming Soon:
 ##
