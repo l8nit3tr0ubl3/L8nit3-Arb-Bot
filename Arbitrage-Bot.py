@@ -26,21 +26,16 @@ def print_title():
     print("Debug level:", settings.DEBUG)
     print("Dry run mode active:", settings.DRY_RUN)
     print("Flip mode active:", settings.FLIP_MODE)
-    if(settings.GAIN_BTC):
-        print("Stack sats mode: gain BTC.")
-    else:
-        print("Stack {0}mode: gain {0}".format(settiings.COIN))
     print("Liquidity Module Active:", settings.LIQUIDITY_MODULE)
     print("Withdrawls Enabled:", settings.ENABLE_WITHDRAWLS)
     print("_"*30)
     print("")
     time.sleep(4)
 
-def get_trex_balance():
+def get_trex_balance(COIN):
     '''Ensure account has funds to opperate script'''
     try:
         btc = myBittrex.get_balance('BTC')['result']['Available']
-        btc = remove_exponent(str(btc))
         if(btc == None):
             btc = 0.0
     except Exception as error:
@@ -49,8 +44,7 @@ def get_trex_balance():
         else:
             pass
     try:
-        Coin = myBittrex.get_balance(settings.COIN)['result']['Available']
-        Coin = remove_exponent(str(Coin))
+        Coin = myBittrex.get_balance(COIN)['result']['Available']
         if(Coin == None):
             Coin = 0.0
     except Exception as error:
@@ -60,11 +54,11 @@ def get_trex_balance():
             pass
     return btc,Coin
 
-def get_nance_balance():
+def get_nance_balance(COIN):
     '''Ensure account has funds to opperate script'''
     try:
         btc = myBinance.get_asset_balance(asset='BTC')['free']
-        Coin = myBinance.get_asset_balance(asset=settings.COIN)['free']
+        Coin = myBinance.get_asset_balance(asset=COIN)['free']
     except Exception as error:
         if(settings.DEBUG == 2):
             print("Error occurred Binance get_balance:", error)
@@ -72,38 +66,38 @@ def get_nance_balance():
             pass
     return btc,Coin
 
-def balance_debug():
+def balance_debug(COIN):
     '''Check balances and print to user'''
     print("Balance Debug Stats:")
-    print("Binance Balances: BTC={0} {1}={2}".format(get_nance_balance()[0], settings.COIN, get_nance_balance()[1]))
-    print("Bittrex Balances: BTC={0} {1}={2}".format(get_trex_balance()[0], settings.COIN, get_trex_balance()[1]))
+    print("Binance Balances: BTC={0} {1}={2}".format(get_nance_balance(COIN)[0], COIN, get_nance_balance(COIN)[1]))
+    print("Bittrex Balances: BTC={0} {1}={2}".format(get_trex_balance(COIN)[0], COIN, get_trex_balance(COIN)[1]))
     print("")
 
-def enough_balance_to_run():
-    '''Check balances and see if there is enough settings.COIN/btc'''
-    btc_price = myBinance.get_ticker(symbol=make_coin_pair()[1])['askPrice']
-    needed_btc = float((float(btc_price)*float(settings.AMOUNT_TO_TRADE))*settings.DESIRED_CYCLES)
-    needed_coin = float(float(settings.AMOUNT_TO_TRADE)*settings.DESIRED_CYCLES)
+def enough_balance_to_run(COIN):
+    '''Check balances and see if there is enough COIN/btc'''
+    btc_price = myBinance.get_ticker(symbol=make_coin_pair(COIN)[1])['askPrice']
+    needed_btc = float((float(btc_price)*float(AMOUNT_TO_TRADE))*settings.DESIRED_CYCLES)
+    needed_coin = float(float(AMOUNT_TO_TRADE)*settings.DESIRED_CYCLES)
     is_enough = True
-    if(float(get_nance_balance()[0])<needed_btc or
-       float(get_trex_balance()[0])<needed_btc or
-       float(get_nance_balance()[1])<needed_coin or
-       float(get_trex_balance()[1])<needed_coin):
+    if(float(get_nance_balance(COIN)[0])<needed_btc or
+       float(get_trex_balance(COIN)[0])<needed_btc or
+       float(get_nance_balance(COIN)[1])<needed_coin or
+       float(get_trex_balance(COIN)[1])<needed_coin):
         is_enough = False
     return is_enough
 
-def make_coin_pair():
-    '''Take settings.COIN and make correct pair for each exchange'''
-    coin_symbol = settings.COIN
+def make_coin_pair(COIN):
+    '''Take COIN and make correct pair for each exchange'''
+    coin_symbol = COIN
     bittrex_pair = "BTC-" + coin_symbol
     binance_pair = coin_symbol + "BTC"
     return bittrex_pair, binance_pair
 
-def get_prices():
-    '''Check settings.COIN price at both exchanges'''
+def get_prices(COIN):
+    '''Check COIN price at both exchanges'''
     try:
-        nance_ask = float(myBinance.get_ticker(symbol=make_coin_pair()[1])['askPrice'])
-        nance_bid = float(myBinance.get_ticker(symbol=make_coin_pair()[1])['bidPrice'])
+        nance_ask = float(myBinance.get_ticker(symbol=make_coin_pair(COIN)[1])['askPrice'])
+        nance_bid = float(myBinance.get_ticker(symbol=make_coin_pair(COIN)[1])['bidPrice'])
     except Exception as error:
         if(settings.DEBUG == 2):
             print("Error occurred Binance get_prices:", error)
@@ -111,8 +105,8 @@ def get_prices():
             pass
 
     try:
-        trex_ask = float(myBittrex.get_ticker(make_coin_pair()[0])['result']['Ask'])
-        trex_bid = float(myBittrex.get_ticker(make_coin_pair()[0])['result']['Bid'])
+        trex_ask = float(myBittrex.get_ticker(make_coin_pair(COIN)[0])['result']['Ask'])
+        trex_bid = float(myBittrex.get_ticker(make_coin_pair(COIN)[0])['result']['Bid'])
     except Exception as error:
         if(settings.DEBUG == 2):
             print("Error occurred Bittrex get_prices:", error)
@@ -121,13 +115,13 @@ def get_prices():
         
     return trex_ask, trex_bid, nance_ask, nance_bid
 
-def buy_trex(value):
+def buy_trex(value, COIN):
     '''Buy at Bittrex'''
     try:
         if(not settings.GAIN_BTC):
-            buy = myBittrex.buy_limit(market=make_coin_pair()[0], quantity=value, rate=get_prices()[1]+0.00000001)
+            buy = myBittrex.buy_limit(market=make_coin_pair(COIN)[0], quantity=value, rate=get_prices()[1]+0.00000001)
         else:
-            buy = myBittrex.buy_limit(market=make_coin_pair()[0], quantity=settings.AMOUNT_TO_TRADE+settings.WITHDRAWL_FEE_COIN, rate=get_prices()[1]+0.00000001)
+            buy = myBittrex.buy_limit(market=make_coin_pair(COIN)[0], quantity=AMOUNT_TO_TRADE+settings.WITHDRAWL_FEE_COIN, rate=get_prices()[1]+0.00000001)
         print(buy)
     except Exception as error:
         if(settings.DEBUG == 2):
@@ -135,10 +129,10 @@ def buy_trex(value):
         else:
             pass
         
-def sell_trex():
+def sell_trex(COIN):
     '''Sell at Bittrex'''
     try:
-        sell = myBittrex.sell_limit(market=make_coin_pair()[0], quantity=settings.AMOUNT_TO_TRADE, rate=get_prices()[2]-0.00000001)
+        sell = myBittrex.sell_limit(market=make_coin_pair(COIN)[0], quantity=AMOUNT_TO_TRADE, rate=get_prices()[2]-0.00000001)
         print(sell)
     except Exception as error:
         if(settings.DEBUG == 2):
@@ -146,13 +140,13 @@ def sell_trex():
         else:
             pass
 
-def buy_nance(value):
+def buy_nance(value, COIN):
     '''Buy coins at binance'''
     try:
         if(not settings.GAIN_BTC):
-            buy = myBinance.order_market_buy(symbol=make_coin_pair()[1],quantity=value)
+            buy = myBinance.order_market_buy(symbol=make_coin_pair(COIN)[1],quantity=value)
         else:
-            buy = myBinance.order_market_buy(symbol=make_coin_pair()[1],quantity=settings.AMOUNT_TO_TRADE+settings.WITHDRAWL_FEE_COIN)
+            buy = myBinance.order_market_buy(symbol=make_coin_pair(COIN)[1],quantity=AMOUNT_TO_TRADE+settings.WITHDRAWL_FEE_COIN)
         print(buy)
     except Exception as error:
         if(settings.DEBUG == 2):
@@ -160,10 +154,10 @@ def buy_nance(value):
         else:
             pass
 
-def sell_nance():
+def sell_nance(COIN):
     '''Sell coins at binance'''
     try:
-        sell = myBinance.order_market_sell(symbol=make_coin_pair()[1],quantity=settings.AMOUNT_TO_TRADE)
+        sell = myBinance.order_market_sell(symbol=make_coin_pair(COIN)[1],quantity=AMOUNT_TO_TRADE)
         print(sell)
     except Exception as error:
         if(settings.DEBUG == 2):
@@ -171,28 +165,28 @@ def sell_nance():
         else:
             pass
 
-def check_liquidity(Binance, Bittrex):
+def check_liquidity(Binance, Bittrex, COIN, AMOUNT_TO_TRADE):
     '''Used to check orderbook before making a trade to ensure liquidity for trade. '''
     liquid = 0
     if(Binance > 0 and Bittrex == 0):
-        Bittrex_Ask_Orderbook = float(myBittrex.get_orderbook('BTC-NXS')['result']['sell'][0]['Quantity'])
-        Binance_Bid_Orderbook = float(myBinance.get_order_book(symbol='NXSBTC')['bids'][0][1])
-        if(Bittrex_Ask_Orderbook > settings.AMOUNT_TO_TRADE and Binance_Bid_Orderbook > (settings.AMOUNT_TO_TRADE*1.1)):
+        Bittrex_Ask_Orderbook = float(myBittrex.get_orderbook(make_coin_pair(COIN)[0])['result']['sell'][0]['Quantity'])
+        Binance_Bid_Orderbook = float(myBinance.get_order_book(symbol=make_coin_pair(COIN)[1])['bids'][0][1])
+        if(Bittrex_Ask_Orderbook > AMOUNT_TO_TRADE and Binance_Bid_Orderbook > (AMOUNT_TO_TRADE*1.1)):
            liquid = 1
             
     elif(Bittrex > 0 and Binance == 0):
-        Bittrex_Bid_Orderbook = myBittrex.get_orderbook('BTC-NXS')['result']['buy'][0]['Quantity']
-        Binance_Ask_Orderbook = myBinance.get_order_book(symbol='NXSBTC')['asks'][0][1]
-        if(Bittrex_Bid_Orderbook > settings.AMOUNT_TO_TRADE and Binance_Ask_Orderbook > (settings.AMOUNT_TO_TRADE*1.1)):
+        Bittrex_Bid_Orderbook = myBittrex.get_orderbook(make_coin_pair(COIN)[0])['result']['buy'][0]['Quantity']
+        Binance_Ask_Orderbook = myBinance.get_order_book(symbol=make_coin_pair(COIN)[1])['asks'][0][1]
+        if(Bittrex_Bid_Orderbook > AMOUNT_TO_TRADE and Binance_Ask_Orderbook > (AMOUNT_TO_TRADE*1.1)):
            liquid = 1
     return liquid
         
-def backend_logic(CUMULATIVE_PROFIT):
+def backend_logic(CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE):
     '''Determine high/low, diff percent, and if trade is needed'''
-    trex_ask = get_prices()[0]
-    trex_bid = get_prices()[1]
-    nance_ask = get_prices()[2]
-    nance_bid = get_prices()[3]
+    trex_ask = get_prices(COIN)[0]
+    trex_bid = get_prices(COIN)[1]
+    nance_ask = get_prices(COIN)[2]
+    nance_bid = get_prices(COIN)[3]
     traded = 0
         
     if((nance_bid>trex_ask) and ((settings.FLIP_MODE and Binance == 0) or (not settings.FLIP_MODE))): #Binance market sell price > bittrex market buy price
@@ -201,24 +195,24 @@ def backend_logic(CUMULATIVE_PROFIT):
         Binance = 1
         Bittrex = 0
         if(settings.DRY_RUN or settings.DEBUG > 0):
-            print("Binance SELL Price {0} > Bittrex BUY Price {1}".format(
-                nance_bid, trex_ask))
+            print("Binance {2} SELL Price {0} > Bittrex {2} BUY Price {1}".format(
+                nance_bid, trex_ask, COIN))
             print("Potential Gain: {0}%".format(round(percent, 2)))
             print("Needs to be: {0}%".format(settings.DESIRED_PERCENT_GAIN))
             print("")
         if(percent > settings.DESIRED_PERCENT_GAIN and percent > 0):
             now = datetime.datetime.now()
-            value = settings.AMOUNT_TO_TRADE*(1.0+(settings.DESIRED_PERCENT_GAIN/100))
-            if(enough_balance_to_run() or settings.DRY_RUN):
+            value = AMOUNT_TO_TRADE*(1.0+(settings.DESIRED_PERCENT_GAIN/100))
+            if(enough_balance_to_run(COIN) or settings.DRY_RUN):
                 if(settings.LIQUIDITY_MODULE):
-                    liquid = check_liquidity(Binance, Bittrex)
+                    liquid = check_liquidity(Binance, Bittrex, COIN, AMOUNT_TO_TRADE)
                 else:
                     print("Liquidity Module Skipping")
                     liquid = 1
                 if(liquid > 0):
                     if(not settings.DRY_RUN):
-                        sell_nance()
-                        buy_trex(value)
+                        sell_nance(COIN)
+                        buy_trex(value, COIN)
                     print("")
                     print("-"*30)
                     print(now.strftime("%Y-%m-%d %H:%M:%S"))
@@ -226,7 +220,7 @@ def backend_logic(CUMULATIVE_PROFIT):
                           .format(nance_bid, trex_ask))
                     if(settings.GAIN_BTC):
                         print("Total gain of {0}%, or {1} satoshi per {2} = {3}"
-                              .format(percent, diff, settings.COIN, diff*settings.AMOUNT_TO_TRADE))
+                              .format(percent, diff, COIN, diff*AMOUNT_TO_TRADE))
                     else:
                         print("Total gain of {0}%".format(percent))
                         print("-"*30)
@@ -243,30 +237,30 @@ def backend_logic(CUMULATIVE_PROFIT):
         Binance = 0
         Bittrex = 1
         if(settings.DRY_RUN or settings.DEBUG > 0):
-            print("Bittrex SELL Price {0} > Binance BUY Price {1}".format(
-                trex_bid, nance_ask))
+            print("Bittrex {2} SELL Price {0} > Binance {2} BUY Price {1}".format(
+                trex_bid, nance_ask, COIN))
             print("Potential Gain: {0}%".format(round(percent, 2)))
             print("Needs to be: {0}%".format(settings.DESIRED_PERCENT_GAIN))
             print("")
         if(percent > settings.DESIRED_PERCENT_GAIN and percent > 0):
-            value = settings.AMOUNT_TO_TRADE*(1.0+(settings.DESIRED_PERCENT_GAIN/100))
-            if(enough_balance_to_run() or settings.DRY_RUN):
+            value = AMOUNT_TO_TRADE*(1.0+(settings.DESIRED_PERCENT_GAIN/100))
+            if(enough_balance_to_run(COIN) or settings.DRY_RUN):
                 if(settings.LIQUIDITY_MODULE):
-                    liquid = check_liquidity(Binance, Bittrex)
+                    liquid = check_liquidity(Binance, Bittrex, COIN, AMOUNT_TO_TRADE)
                 else:
                     print("Liquidity Module Skipping")
                     liquid = 1
                 if(liquid > 0):
                     if(not settings.DRY_RUN):
-                        sell_trex()
-                        buy_nance(value)
+                        sell_trex(COIN)
+                        buy_nance(value, COIN)
                     print("")
                     print("-"*30)
                     print("Trade Occurred! Sold at Bittrex for {0} \nBought at Binance for {1}"
                           .format(trex_bid, nance_ask))
                     if(settings.GAIN_BTC):
                         print("Total gain of {0}%, or {1} satoshi per {2} = {3}"
-                              .format(percent, diff, settings.COIN, diff*settings.AMOUNT_TO_TRADE))
+                              .format(percent, diff, COIN, diff*AMOUNT_TO_TRADE))
                     else:
                         print("Total gain of {0}%".format(percent))
                         print("-"*30)
@@ -284,8 +278,8 @@ def backend_logic(CUMULATIVE_PROFIT):
             percent2 = (diff2/nance_bid)*100
             print("")
             print("Pricing Debug Stats:")
-            print("Binance Sell: {0} | Bittrex Buy: {1} Potential Gain={2}%".format(nance_bid, trex_ask, round(percent2, 2)))
-            print("Bittrex Sell: {0} | Binance Buy: {1} Potential Gain={2}%".format(trex_bid, nance_ask, round(percent1, 2)))
+            print("{3} Binance Sell: {0} | Bittrex Buy: {1} Potential Gain={2}%".format(nance_bid, trex_ask, round(percent2, 2), COIN))
+            print("{3} Bittrex Sell: {0} | Binance Buy: {1} Potential Gain={2}%".format(trex_bid, nance_ask, round(percent1, 2), COIN))
             print("")
             if(not settings.FLIP_MODE):
                 print("Waiting for positive Bid/Ask price difference.")
@@ -318,36 +312,36 @@ def trex_send_btc(btc_diff):
     except Exception as error:
         print("Error occurred bittrex, withdraw_btc:", error)
     
-def nance_send_coin(coin_diff):
+def nance_send_coin(coin_diff, COIN):
     '''Send coins from binance'''
-    binance_coin_address = myBinance.get_deposit_address(asset=settings.COIN)['address']
+    binance_coin_address = myBinance.get_deposit_address(asset=COIN)['address']
     try:
         if(not settings.DRY_RUN):
             send = myBinance.withdraw(asset='BTC',address=binance_coin_address,amount=coin_diff)
             print(send)
         else:
-            print("Dry Run - nance", settings.COIN, "withdrawl amount:", coin_diff)
+            print("Dry Run - nance", COIN, "withdrawl amount:", coin_diff)
     except Exception as error:
         print("Error occurred binance, withdraw_coin:", error)
 
-def trex_send_coin(coin_diff):
+def trex_send_coin(coin_diff, COIN):
     '''Send coins from bittrex'''
-    bittrex_coin_address = myBittrex.get_deposit_address(settings.COIN)['result']['Address']
+    bittrex_coin_address = myBittrex.get_deposit_address(COIN)['result']['Address']
     try:
         if(not settings.DRY_RUN):
-            send = myBittrex.withdraw(settings.COIN, coin_diff, bittrex_coin_address)
+            send = myBittrex.withdraw(COIN, coin_diff, bittrex_coin_address)
             print(send)
         else:
-            print("Dry Run - trex", settings.COIN, "withdrawl amount:", coin_diff)
+            print("Dry Run - trex", COIN, "withdrawl amount:", coin_diff)
     except Exception as error:
         print("Error occurred bittrex, withdraw_coin:", error)
 
-def equalize_balances():
+def equalize_balances(COIN):
     '''Equalize balances at both exchanges for next run'''
-    nance_btc = float(get_nance_balance()[0])
-    nance_coin = float(get_nance_balance()[1])
-    trex_btc = float(get_trex_balance()[0])
-    trex_coin = float(get_trex_balance()[1])
+    nance_btc = float(get_nance_balance(COIN)[0])
+    nance_coin = float(get_nance_balance(COIN)[1])
+    trex_btc = float(get_trex_balance(COIN)[0])
+    trex_coin = float(get_trex_balance(COIN)[1])
     btc_high = max(nance_btc, trex_btc)
     coin_high = max(nance_coin, trex_coin)
     if(nance_btc > 0 and trex_btc > 0):
@@ -368,51 +362,58 @@ def equalize_balances():
     else:
         pass
 
-def main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT):
+def main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE):
     '''Main function, pull everything together to run'''
-    if(enough_balance_to_run() or settings.DRY_RUN):
-        traded = backend_logic(CUMULATIVE_PROFIT)[0]
+    if(enough_balance_to_run(COIN) or settings.DRY_RUN):
+        traded = backend_logic(CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE)[0]
         if(traded == 1):
             TRADE_COUNTER = TRADE_COUNTER+1
-            CUMULATIVE_PROFIT = backend_logic(CUMULATIVE_PROFIT)[1]
+            CUMULATIVE_PROFIT = backend_logic(CUMULATIVE_PROFIT, COIN)[1]
             print("Sleeping after trade.")
             time.sleep(settings.SLEEP_AFTER_TRADE)
         if(COUNTER%10 == 0 and COUNTER != 0):
             print("Run-Count:", COUNTER)
             print("Trade-Count:", TRADE_COUNTER)
             print("Cumulative Profit % (BOTH balances):", CUMULATIVE_PROFIT/2)
-            balance_debug()
-        if(traded == 1 and not enough_balance_to_run()):
+            balance_debug(COIN)
+        if(traded == 1 and not enough_balance_to_run(COIN)):
             if(not settings.DRY_RUN):
                 if(settings.ENABLE_WITHDRAWLS):
-                    equalize_balances()
-                balance_debug()
+                    equalize_balances(COIN)
+                balance_debug(COIN)
         elif(traded == 0):
             time.sleep(settings.SLEEP_BETWEEN_CYCLE)
     else:
         print("Please Check Balances!")
+
+def print_needed(COIN, AMOUNT_TO_TRADE):
+    btc_price = myBinance.get_ticker(symbol=make_coin_pair(COIN)[1])['askPrice']
+    btc_amount = (float(btc_price)*float(AMOUNT_TO_TRADE))*settings.DESIRED_CYCLES
+    print("needed btc per account:", round(btc_amount, 8))
+    print("needed", COIN, " per account:", float(AMOUNT_TO_TRADE)*settings.DESIRED_CYCLES)
+    print("")
 #End Of Functions
 
 #Print Title, And Run
 print_title()
-btc_price = myBinance.get_ticker(symbol=make_coin_pair()[1])['askPrice']
-btc_amount = (float(btc_price)*float(settings.AMOUNT_TO_TRADE))*settings.DESIRED_CYCLES
-print("needed btc per account:", round(btc_amount, 8))
-print("needed", settings.COIN, " per account:", float(settings.AMOUNT_TO_TRADE)*settings.DESIRED_CYCLES)
-print("")
-balance_debug()
+for COIN in settings.COIN_LIST:
+    AMOUNT_TO_TRADE = settings.COIN_LIST[COIN]
+    print_needed(COIN, AMOUNT_TO_TRADE)
 COUNTER = 0
 TRADE_COUNTER = 0
 RETRY = 0
 CUMULATIVE_PROFIT = 0.0
+
 while True:
-    try:
-        main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT)
-        COUNTER = COUNTER+1
-    except:
-        time.sleep(3)
-        while(RETRY<3):
-            print("Script crashed, retrying......")
-            print_title()
-            main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT)
-            RETRY += 1
+    for COIN in settings.COIN_LIST:
+        AMOUNT_TO_TRADE = settings.COIN_LIST[COIN]
+        try:
+            main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE)
+            COUNTER = COUNTER+1
+        except:
+            time.sleep(3)
+            while(RETRY<3):
+                print("Script crashed, retrying......")
+                print_title()
+                main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE)
+                RETRY += 1
