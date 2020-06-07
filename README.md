@@ -29,3 +29,7 @@ displayed for debugging purposes.
     - Cleaner, faster running for better results and more stable profit.  
 - Auto balance equalization after trading for continuous 24/7/365 running (partially implemented)  
 - Option to exchange BTC to USDT/USDC/DOGE to pay less fees during equalization.  
+
+# Screenshot
+##
+![image of bot](https://i.imgur.com/g9Cwulr.jpg)
