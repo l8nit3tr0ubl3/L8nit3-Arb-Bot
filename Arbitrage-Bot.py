@@ -181,7 +181,7 @@ def check_liquidity(Binance, Bittrex, COIN, AMOUNT_TO_TRADE):
            liquid = 1
     return liquid
         
-def backend_logic(CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE):
+def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
     '''Determine high/low, diff percent, and if trade is needed'''
     trex_ask = get_prices(COIN)[0]
     trex_bid = get_prices(COIN)[1]
@@ -198,11 +198,11 @@ def backend_logic(CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE):
             print("Binance {2} SELL Price {0} > Bittrex {2} BUY Price {1}".format(
                 nance_bid, trex_ask, COIN))
             print("Potential Gain: {0}%".format(round(percent, 2)))
-            print("Needs to be: {0}%".format(settings.DESIRED_PERCENT_GAIN))
+            print("Needs to be: {0}%".format(DESIRED_PERCENT_GAIN))
             print("")
-        if(percent > settings.DESIRED_PERCENT_GAIN and percent > 0):
+        if(percent > DESIRED_PERCENT_GAIN and percent > 0):
             now = datetime.datetime.now()
-            value = AMOUNT_TO_TRADE*(1.0+(settings.DESIRED_PERCENT_GAIN/100))
+            value = AMOUNT_TO_TRADE*(1.0+(DESIRED_PERCENT_GAIN/100))
             if(enough_balance_to_run(COIN) or settings.DRY_RUN):
                 if(settings.LIQUIDITY_MODULE):
                     liquid = check_liquidity(Binance, Bittrex, COIN, AMOUNT_TO_TRADE)
@@ -226,7 +226,6 @@ def backend_logic(CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE):
                         print("-"*30)
                         print("")
                         traded = 1
-                    CUMULATIVE_PROFIT = CUMULATIVE_PROFIT + percent
                 else:
                     print("#Trade conditions met, but lacking liquidity in orderbooks#")
                     print("")
@@ -240,10 +239,10 @@ def backend_logic(CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE):
             print("Bittrex {2} SELL Price {0} > Binance {2} BUY Price {1}".format(
                 trex_bid, nance_ask, COIN))
             print("Potential Gain: {0}%".format(round(percent, 2)))
-            print("Needs to be: {0}%".format(settings.DESIRED_PERCENT_GAIN))
+            print("Needs to be: {0}%".format(DESIRED_PERCENT_GAIN))
             print("")
-        if(percent > settings.DESIRED_PERCENT_GAIN and percent > 0):
-            value = AMOUNT_TO_TRADE*(1.0+(settings.DESIRED_PERCENT_GAIN/100))
+        if(percent > DESIRED_PERCENT_GAIN and percent > 0):
+            value = AMOUNT_TO_TRADE*(1.0+(DESIRED_PERCENT_GAIN/100))
             if(enough_balance_to_run(COIN) or settings.DRY_RUN):
                 if(settings.LIQUIDITY_MODULE):
                     liquid = check_liquidity(Binance, Bittrex, COIN, AMOUNT_TO_TRADE)
@@ -266,7 +265,6 @@ def backend_logic(CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE):
                         print("-"*30)
                         print("")
                         traded = 1
-                    CUMULATIVE_PROFIT = CUMULATIVE_PROFIT + percent
                 else:
                     print("#Trade conditions met, but lacking liquidity in orderbooks#")
                     print("")
@@ -280,13 +278,12 @@ def backend_logic(CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE):
             print("Pricing Debug Stats:")
             print("{3} Binance Sell: {0} | Bittrex Buy: {1} Potential Gain={2}%".format(nance_bid, trex_ask, round(percent2, 2), COIN))
             print("{3} Bittrex Sell: {0} | Binance Buy: {1} Potential Gain={2}%".format(trex_bid, nance_ask, round(percent1, 2), COIN))
-            print("")
             if(not settings.FLIP_MODE):
                 print("Waiting for positive Bid/Ask price difference.")
             else:
                 print("Waiting for opposite trade to be profitable.")
             print("")
-    return traded, CUMULATIVE_PROFIT
+    return traded
 
 def nance_send_btc(btc_diff):
     '''Send btc from binance '''
@@ -362,24 +359,22 @@ def equalize_balances(COIN):
     else:
         pass
 
-def main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE):
+def main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
     '''Main function, pull everything together to run'''
     if(enough_balance_to_run(COIN) or settings.DRY_RUN):
-        traded = backend_logic(CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE)[0]
+        traded = backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN)
         if(traded == 1):
             TRADE_COUNTER = TRADE_COUNTER+1
-            CUMULATIVE_PROFIT = backend_logic(CUMULATIVE_PROFIT, COIN)[1]
             print("Sleeping after trade.")
             time.sleep(settings.SLEEP_AFTER_TRADE)
         if(COUNTER%10 == 0 and COUNTER != 0):
             print("Run-Count:", COUNTER)
             print("Trade-Count:", TRADE_COUNTER)
-            print("Cumulative Profit % (BOTH balances):", CUMULATIVE_PROFIT/2)
-            balance_debug(COIN)
-        if(traded == 1 and not enough_balance_to_run(COIN)):
+            for COIN in settings.COIN_LIST:
+                balance_debug(COIN)
+        if(traded == 1 and not enough_balance_to_run(COIN) and settings.ENABLE_WITHDRAWLS):
             if(not settings.DRY_RUN):
-                if(settings.ENABLE_WITHDRAWLS):
-                    equalize_balances(COIN)
+                equalize_balances(COIN)
                 balance_debug(COIN)
         elif(traded == 0):
             time.sleep(settings.SLEEP_BETWEEN_CYCLE)
@@ -389,31 +384,34 @@ def main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE):
 def print_needed(COIN, AMOUNT_TO_TRADE):
     btc_price = myBinance.get_ticker(symbol=make_coin_pair(COIN)[1])['askPrice']
     btc_amount = (float(btc_price)*float(AMOUNT_TO_TRADE))*settings.DESIRED_CYCLES
-    print("needed btc per account:", round(btc_amount, 8))
-    print("needed", COIN, " per account:", float(AMOUNT_TO_TRADE)*settings.DESIRED_CYCLES)
-    print("")
+    print("Needed BTC per account:", round(btc_amount, 8))
+    print("Needed", COIN, " per account:", float(AMOUNT_TO_TRADE)*settings.DESIRED_CYCLES)
 #End Of Functions
 
 #Print Title, And Run
 print_title()
 for COIN in settings.COIN_LIST:
-    AMOUNT_TO_TRADE = settings.COIN_LIST[COIN]
+    AMOUNT_TO_TRADE = settings.COIN_LIST[COIN][0]
+    DESIRED_PERCENT_GAIN = settings.COIN_LIST[COIN][1]
     print_needed(COIN, AMOUNT_TO_TRADE)
+    print("Target percent:", DESIRED_PERCENT_GAIN, "\n")
 COUNTER = 0
 TRADE_COUNTER = 0
 RETRY = 0
-CUMULATIVE_PROFIT = 0.0
 
 while True:
+    print("_"*30)
     for COIN in settings.COIN_LIST:
-        AMOUNT_TO_TRADE = settings.COIN_LIST[COIN]
+        AMOUNT_TO_TRADE = settings.COIN_LIST[COIN][0]
+        DESIRED_PERCENT_GAIN = settings.COIN_LIST[COIN][1]
         try:
-            main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE)
-            COUNTER = COUNTER+1
+            main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN)
         except:
             time.sleep(3)
             while(RETRY<3):
                 print("Script crashed, retrying......")
                 print_title()
-                main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT, COIN, AMOUNT_TO_TRADE)
+                main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAINE)
                 RETRY += 1
+    COUNTER = COUNTER+1
+    print("_"*30)
