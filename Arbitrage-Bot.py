@@ -411,7 +411,7 @@ while True:
             while(RETRY<3):
                 print("Script crashed, retrying......")
                 print_title()
-                main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAINE)
+                main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN)
                 RETRY += 1
     COUNTER = COUNTER+1
     print("_"*30)
