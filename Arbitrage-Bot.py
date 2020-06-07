@@ -41,8 +41,8 @@ def get_trex_balance(COIN):
     except Exception as error:
         if(settings.DEBUG == 2):
             print("Error occurred Bittrex get_balance:", error)
-        else:
-            pass
+        time.sleep(0.1)
+        btc = myBittrex.get_balance('BTC')['result']['Available']
     try:
         Coin = myBittrex.get_balance(COIN)['result']['Available']
         if(Coin == None):
@@ -50,8 +50,8 @@ def get_trex_balance(COIN):
     except Exception as error:
         if(settings.DEBUG == 2):
             print("Error occurred Bittrex get_balance:", error)
-        else:
-            pass
+        time.sleep(0.1)
+        Coin = myBittrex.get_balance(COIN)['result']['Available']
     return btc,Coin
 
 def get_nance_balance(COIN):
@@ -62,8 +62,9 @@ def get_nance_balance(COIN):
     except Exception as error:
         if(settings.DEBUG == 2):
             print("Error occurred Binance get_balance:", error)
-        else:
-            pass
+        time.sleep(0.1)
+        btc = myBinance.get_asset_balance(asset='BTC')['free']
+        Coin = myBinance.get_asset_balance(asset=COIN)['free']
     return btc,Coin
 
 def balance_debug(COIN):
@@ -101,8 +102,9 @@ def get_prices(COIN):
     except Exception as error:
         if(settings.DEBUG == 2):
             print("Error occurred Binance get_prices:", error)
-        else:
-            pass
+        time.sleep(0.1)
+        nance_ask = float(myBinance.get_ticker(symbol=make_coin_pair(COIN)[1])['askPrice'])
+        nance_bid = float(myBinance.get_ticker(symbol=make_coin_pair(COIN)[1])['bidPrice'])
 
     try:
         trex_ask = float(myBittrex.get_ticker(make_coin_pair(COIN)[0])['result']['Ask'])
@@ -110,8 +112,9 @@ def get_prices(COIN):
     except Exception as error:
         if(settings.DEBUG == 2):
             print("Error occurred Bittrex get_prices:", error)
-        else:
-            pass
+        time.sleep(0.1)
+        trex_ask = float(myBittrex.get_ticker(make_coin_pair(COIN)[0])['result']['Ask'])
+        trex_bid = float(myBittrex.get_ticker(make_coin_pair(COIN)[0])['result']['Bid'])
         
     return trex_ask, trex_bid, nance_ask, nance_bid
 
@@ -367,11 +370,6 @@ def main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
             TRADE_COUNTER = TRADE_COUNTER+1
             print("Sleeping after trade.")
             time.sleep(settings.SLEEP_AFTER_TRADE)
-        if(COUNTER%10 == 0 and COUNTER != 0):
-            print("Run-Count:", COUNTER)
-            print("Trade-Count:", TRADE_COUNTER)
-            for COIN in settings.COIN_LIST:
-                balance_debug(COIN)
         if(traded == 1 and not enough_balance_to_run(COIN) and settings.ENABLE_WITHDRAWLS):
             if(not settings.DRY_RUN):
                 equalize_balances(COIN)
@@ -413,5 +411,10 @@ while True:
                 print_title()
                 main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN)
                 RETRY += 1
+    if(COUNTER%10 == 0 and COUNTER != 0):
+            print("Run-Count:", COUNTER)
+            print("Trade-Count:", TRADE_COUNTER)
+            for COIN in settings.COIN_LIST:
+                balance_debug(COIN)
     COUNTER = COUNTER+1
     print("_"*30)
