@@ -76,7 +76,6 @@ def get_nance_balance(COIN):
 
 def balance_debug(COIN):
     '''Check balances and print to user'''
-    print("Balance Debug Stats:")
     print("Binance Balances: BTC={0} {1}={2}".format(get_nance_balance(COIN)[0], COIN, get_nance_balance(COIN)[1]))
     print("Bittrex Balances: BTC={0} {1}={2}".format(get_trex_balance(COIN)[0], COIN, get_trex_balance(COIN)[1]))
     print("")
@@ -285,14 +284,12 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
             diff2 = nance_bid-trex_ask
             percent2 = (diff2/nance_bid)*100
             print("")
-            print("Pricing Debug Stats:")
             print("{3} Binance Sell: {0} | Bittrex Buy: {1} Potential Gain={2}%".format(nance_bid, trex_ask, round(percent2-0.35, 2), COIN))
             print("{3} Bittrex Sell: {0} | Binance Buy: {1} Potential Gain={2}%".format(trex_bid, nance_ask, round(percent1-0.35, 2), COIN))
             if(not settings.FLIP_MODE):
                 print("Waiting for positive Bid/Ask price difference.")
             elif(settings.FLIP_MODE and traded == 1):
                 print("Waiting for opposite trade to be profitable.")
-            print("")
     return traded
 
 def nance_send_btc(btc_diff):
@@ -425,7 +422,7 @@ while True:
                     profit_amount = 0
                 else:
                     profit_amount = PROFIT_TRACKER[COIN]/2
-                print("Profit Tracking {0}: {1}% (BOTH BALANCES)".format(COIN, profit_amount))
+                print("Profit Tracking {0}: {1}% (BOTH EXCHANGES)".format(COIN, profit_amount))
                 balance_debug(COIN)
     COUNTER = COUNTER+1
     print("_"*30)
