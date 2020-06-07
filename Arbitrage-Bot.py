@@ -13,6 +13,13 @@ myBinance = Client(settings.BINANCE_API_KEY, settings.BINANCE_API_SECRET) #Binan
 myBittrex = Bittrex(settings.BITTREX_API_KEY, settings.BITTREX_API_SECRET, api_version='v1.1') #Bittrex connect
 #End of constants
 
+#Variables
+COUNTER = 0
+TRADE_COUNTER = 0
+RETRY = 0
+PROFIT_TRACKER = {}
+BUY_LIST = {}
+
 #Functions
 def print_title():
     print("-"*30)
@@ -168,16 +175,16 @@ def sell_nance(COIN):
         else:
             pass
 
-def check_liquidity(Binance, Bittrex, COIN, AMOUNT_TO_TRADE):
+def check_liquidity(COIN, AMOUNT_TO_TRADE):
     '''Used to check orderbook before making a trade to ensure liquidity for trade. '''
     liquid = 0
-    if(Binance > 0 and Bittrex == 0):
+    if(BUY_LIST[COIN]['Binance'] == 1):
         Bittrex_Ask_Orderbook = float(myBittrex.get_orderbook(make_coin_pair(COIN)[0])['result']['sell'][0]['Quantity'])
         Binance_Bid_Orderbook = float(myBinance.get_order_book(symbol=make_coin_pair(COIN)[1])['bids'][0][1])
         if(Bittrex_Ask_Orderbook > AMOUNT_TO_TRADE and Binance_Bid_Orderbook > (AMOUNT_TO_TRADE*1.1)):
            liquid = 1
             
-    elif(Bittrex > 0 and Binance == 0):
+    elif(BUY_LIST[COIN]['Bittrex'] == 1):
         Bittrex_Bid_Orderbook = myBittrex.get_orderbook(make_coin_pair(COIN)[0])['result']['buy'][0]['Quantity']
         Binance_Ask_Orderbook = myBinance.get_order_book(symbol=make_coin_pair(COIN)[1])['asks'][0][1]
         if(Bittrex_Bid_Orderbook > AMOUNT_TO_TRADE and Binance_Ask_Orderbook > (AMOUNT_TO_TRADE*1.1)):
@@ -192,23 +199,21 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
     nance_bid = get_prices(COIN)[3]
     traded = 0
         
-    if((nance_bid>trex_ask) and ((settings.FLIP_MODE and Binance == 0) or (not settings.FLIP_MODE))): #Binance market sell price > bittrex market buy price
+    if((nance_bid>trex_ask) and ((settings.FLIP_MODE and BUY_LIST[COIN]['Binance'] == 1) or (not settings.FLIP_MODE))):
         diff = nance_bid-trex_ask
         percent = (diff/nance_ask)*100
-        Binance = 1
-        Bittrex = 0
         if(settings.DRY_RUN or settings.DEBUG > 0):
             print("Binance {2} SELL Price {0} > Bittrex {2} BUY Price {1}".format(
                 nance_bid, trex_ask, COIN))
-            print("Potential Gain: {0}%".format(round(percent, 2)))
-            print("Needs to be: {0}%".format(DESIRED_PERCENT_GAIN))
+            print("Potential Gain: {0}%".format(round(percent-0.35, 2)))
+            print("Needs to be: {0}% including trade fees".format(DESIRED_PERCENT_GAIN + 0.0035))
             print("")
-        if(percent > DESIRED_PERCENT_GAIN):
+        if(percent > (DESIRED_PERCENT_GAIN + 0.35)):
             now = datetime.datetime.now()
             value = AMOUNT_TO_TRADE*(1.0+(DESIRED_PERCENT_GAIN/100))
             if(enough_balance_to_run(COIN) or settings.DRY_RUN):
                 if(settings.LIQUIDITY_MODULE):
-                    liquid = check_liquidity(Binance, Bittrex, COIN, AMOUNT_TO_TRADE)
+                    liquid = check_liquidity(COIN, AMOUNT_TO_TRADE)
                 else:
                     print("Liquidity Module Skipping")
                     liquid = 1
@@ -223,32 +228,32 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
                           .format(nance_bid, trex_ask))
                     if(settings.GAIN_BTC):
                         print("Total gain of {0}%, or {1} satoshi per {2} = {3}"
-                              .format(percent, diff, COIN, diff*AMOUNT_TO_TRADE))
+                              .format(percent-0.35, diff, COIN, diff*AMOUNT_TO_TRADE))
                     else:
-                        print("Total gain of {0}%".format(percent))
+                        print("Total gain of {0}%".format(percent- 0.35))
                         print("-"*30)
                         print("")
                         traded = 1
+                    PROFIT_TRACKER[COIN] = PROFIT_TRACKER[COIN] + (percent-0.35)
+                    BUY_LIST[COIN] = {'Bittrex':1, 'Binance':0}
                 else:
                     print("#Trade conditions met, but lacking liquidity in orderbooks#")
                     print("")
         
-    elif((trex_bid>nance_ask)  and ((settings.FLIP_MODE and Bittrex == 0) or (not settings.FLIP_MODE))): # IF bittrex market sell price > binance market buy
+    elif((trex_bid>nance_ask)  and ((settings.FLIP_MODE and BUY_LIST[COIN]['Bittrex'] == 1) or (not settings.FLIP_MODE))):
         diff = trex_bid-nance_ask
         percent = (diff/trex_ask)*100
-        Binance = 0
-        Bittrex = 1
         if(settings.DRY_RUN or settings.DEBUG > 0):
             print("Bittrex {2} SELL Price {0} > Binance {2} BUY Price {1}".format(
                 trex_bid, nance_ask, COIN))
-            print("Potential Gain: {0}%".format(round(percent, 2)))
-            print("Needs to be: {0}%".format(DESIRED_PERCENT_GAIN))
+            print("Potential Gain: {0}%".format(round(percent-0.35, 2)))
+            print("Needs to be: {0}% (including trade fees)".format(DESIRED_PERCENT_GAIN + 0.0035))
             print("")
-        if(percent > DESIRED_PERCENT_GAIN):
+        if(percent > (DESIRED_PERCENT_GAIN + 0.35)):
             value = AMOUNT_TO_TRADE*(1.0+(DESIRED_PERCENT_GAIN/100))
             if(enough_balance_to_run(COIN) or settings.DRY_RUN):
                 if(settings.LIQUIDITY_MODULE):
-                    liquid = check_liquidity(Binance, Bittrex, COIN, AMOUNT_TO_TRADE)
+                    liquid = check_liquidity(COIN, AMOUNT_TO_TRADE)
                 else:
                     print("Liquidity Module Skipping")
                     liquid = 1
@@ -262,12 +267,14 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
                           .format(trex_bid, nance_ask))
                     if(settings.GAIN_BTC):
                         print("Total gain of {0}%, or {1} satoshi per {2} = {3}"
-                              .format(percent, diff, COIN, diff*AMOUNT_TO_TRADE))
+                              .format(percent-0.35, diff, COIN, diff*AMOUNT_TO_TRADE))
                     else:
-                        print("Total gain of {0}%".format(percent))
+                        print("Total gain of {0}%".format(percent-0.35))
                         print("-"*30)
                         print("")
                         traded = 1
+                    PROFIT_TRACKER[COIN] = PROFIT_TRACKER[COIN] + (percent-0.35)
+                    BUY_LIST[COIN] = {'Bittrex':0, 'Binance':1}
                 else:
                     print("#Trade conditions met, but lacking liquidity in orderbooks#")
                     print("")
@@ -279,11 +286,11 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
             percent2 = (diff2/nance_bid)*100
             print("")
             print("Pricing Debug Stats:")
-            print("{3} Binance Sell: {0} | Bittrex Buy: {1} Potential Gain={2}%".format(nance_bid, trex_ask, round(percent2, 2), COIN))
-            print("{3} Bittrex Sell: {0} | Binance Buy: {1} Potential Gain={2}%".format(trex_bid, nance_ask, round(percent1, 2), COIN))
+            print("{3} Binance Sell: {0} | Bittrex Buy: {1} Potential Gain={2}%".format(nance_bid, trex_ask, round(percent2-0.35, 2), COIN))
+            print("{3} Bittrex Sell: {0} | Binance Buy: {1} Potential Gain={2}%".format(trex_bid, nance_ask, round(percent1-0.35, 2), COIN))
             if(not settings.FLIP_MODE):
                 print("Waiting for positive Bid/Ask price difference.")
-            else:
+            elif(settings.FLIP_MODE and traded == 1):
                 print("Waiting for opposite trade to be profitable.")
             print("")
     return traded
@@ -393,9 +400,8 @@ for COIN in settings.COIN_LIST:
     DESIRED_PERCENT_GAIN = settings.COIN_LIST[COIN][1]
     print_needed(COIN, AMOUNT_TO_TRADE)
     print("Target percent:", DESIRED_PERCENT_GAIN, "\n")
-COUNTER = 0
-TRADE_COUNTER = 0
-RETRY = 0
+    PROFIT_TRACKER[COIN] = 0.0
+    BUY_LIST[COIN] = {'Bittrex':0, 'Binance':0}
 
 while True:
     print("_"*30)
@@ -415,6 +421,11 @@ while True:
             print("Run-Count:", COUNTER)
             print("Trade-Count:", TRADE_COUNTER)
             for COIN in settings.COIN_LIST:
+                if(PROFIT_TRACKER[COIN] == 0):
+                    profit_amount = 0
+                else:
+                    profit_amount = PROFIT_TRACKER[COIN]/2
+                print("Profit Tracking {0}: {1}% (BOTH BALANCES)".format(COIN, profit_amount))
                 balance_debug(COIN)
     COUNTER = COUNTER+1
     print("_"*30)
