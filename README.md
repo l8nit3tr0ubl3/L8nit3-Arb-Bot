@@ -16,7 +16,9 @@ displayed for debugging purposes.
 - Multiple debug output levels for a cleaner terminal.  
 - 2 gaining modes, one stacks sats, the other stack your desired coin.  
 - Set a desired sleep time between trades to avoid overtrading the same signal.  
-- Liquidity module, only trade if orderbook has sufficient liquidity to make BOTH trades.  
+- Liquidity module, only trade if orderbook has sufficient liquidity to make BOTH trades.    
+- Flip-Mode: Once a trade happens, do not trade again until opposite trade can occur.   
+(eg. Bought Binance, wait untill buy Bittrex. Avoid needing to equalize balances.)  
 
 # Coming Soon:
 ##
