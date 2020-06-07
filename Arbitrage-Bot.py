@@ -200,7 +200,7 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
             print("Potential Gain: {0}%".format(round(percent, 2)))
             print("Needs to be: {0}%".format(DESIRED_PERCENT_GAIN))
             print("")
-        if(percent > DESIRED_PERCENT_GAIN and percent > 0):
+        if(percent > DESIRED_PERCENT_GAIN):
             now = datetime.datetime.now()
             value = AMOUNT_TO_TRADE*(1.0+(DESIRED_PERCENT_GAIN/100))
             if(enough_balance_to_run(COIN) or settings.DRY_RUN):
@@ -241,7 +241,7 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
             print("Potential Gain: {0}%".format(round(percent, 2)))
             print("Needs to be: {0}%".format(DESIRED_PERCENT_GAIN))
             print("")
-        if(percent > DESIRED_PERCENT_GAIN and percent > 0):
+        if(percent > DESIRED_PERCENT_GAIN):
             value = AMOUNT_TO_TRADE*(1.0+(DESIRED_PERCENT_GAIN/100))
             if(enough_balance_to_run(COIN) or settings.DRY_RUN):
                 if(settings.LIQUIDITY_MODULE):
@@ -402,8 +402,8 @@ RETRY = 0
 while True:
     print("_"*30)
     for COIN in settings.COIN_LIST:
-        AMOUNT_TO_TRADE = settings.COIN_LIST[COIN][0]
-        DESIRED_PERCENT_GAIN = settings.COIN_LIST[COIN][1]
+        AMOUNT_TO_TRADE = float(settings.COIN_LIST[COIN][0])
+        DESIRED_PERCENT_GAIN = float(settings.COIN_LIST[COIN][1])
         try:
             main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN)
         except:
