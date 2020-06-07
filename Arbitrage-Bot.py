@@ -25,6 +25,7 @@ def print_title():
     print("_"*30)
     print("Debug level:", settings.DEBUG)
     print("Dry run mode active:", settings.DRY_RUN)
+    print("Flip mode active:", settings.FLIP_MODE)
     if(settings.GAIN_BTC):
         print("Stack sats mode: gain BTC.")
     else:
@@ -92,17 +93,11 @@ def enough_balance_to_run():
     return is_enough
 
 def make_coin_pair():
+    '''Take settings.COIN and make correct pair for each exchange'''
     coin_symbol = settings.COIN
     bittrex_pair = "BTC-" + coin_symbol
     binance_pair = coin_symbol + "BTC"
     return bittrex_pair, binance_pair
-
-def remove_exponent(value):
-    '''Change 1e10 style numbers to satoshi'''
-    decial = value.split('e')
-    ret_val = format(((float(decial[0]))*(10**int(decial[1]))), '.8f')
-    ret_val = float(ret_val)
-    return ret_val
 
 def get_prices():
     '''Check settings.COIN price at both exchanges'''
@@ -192,33 +187,22 @@ def check_liquidity(Binance, Bittrex):
            liquid = 1
     return liquid
         
-def backend_logic():
+def backend_logic(CUMULATIVE_PROFIT):
     '''Determine high/low, diff percent, and if trade is needed'''
     trex_ask = get_prices()[0]
     trex_bid = get_prices()[1]
     nance_ask = get_prices()[2]
     nance_bid = get_prices()[3]
     traded = 0
-    Binance = 0
-    Bittrex = 0
-    if(settings.DRY_RUN or settings.DEBUG > 0):
-        diff1 = trex_bid-nance_ask
-        percent1 = (diff1/trex_ask)*100
-        diff2 = nance_bid-trex_ask
-        percent2 = (diff2/nance_ask)*100
-        print("")
-        print("Pricing Debug Stats:")
-        print("Binance Sell: {0} | Bittrex Buy: {1} Potential Gain={2}%".format(nance_bid, trex_ask, round(percent2, 2)))
-        print("Bittrex Sell: {0} | Binance Buy: {1} Potential Gain={2}%".format(trex_bid, nance_ask, round(percent1, 2)))
-        print("")
         
-    if(nance_bid>trex_ask): #Binance market sell price > bittrex market buy price
+    if((nance_bid>trex_ask) and ((settings.FLIP_MODE and Binance == 0) or (not settings.FLIP_MODE))): #Binance market sell price > bittrex market buy price
         diff = nance_bid-trex_ask
         percent = (diff/nance_ask)*100
         Binance = 1
         Bittrex = 0
         if(settings.DRY_RUN or settings.DEBUG > 0):
-            print("Binance Market SELL Price > Bittrex Market BUY Price")
+            print("Binance SELL Price {0} > Bittrex BUY Price {1}".format(
+                nance_bid, trex_ask))
             print("Potential Gain: {0}%".format(round(percent, 2)))
             print("Needs to be: {0}%".format(settings.DESIRED_PERCENT_GAIN))
             print("")
@@ -229,7 +213,8 @@ def backend_logic():
                 if(settings.LIQUIDITY_MODULE):
                     liquid = check_liquidity(Binance, Bittrex)
                 else:
-                    liquid = 0
+                    print("Liquidity Module Skipping")
+                    liquid = 1
                 if(liquid > 0):
                     if(not settings.DRY_RUN):
                         sell_nance()
@@ -238,25 +223,28 @@ def backend_logic():
                     print("-"*30)
                     print(now.strftime("%Y-%m-%d %H:%M:%S"))
                     print("Trade Occurred! Sold at Binance for {0}\nBought at Bittrex for {1}"
-                          .format(nance_bid, remove_exponent(str(trex_ask))))
+                          .format(nance_bid, trex_ask))
                     if(settings.GAIN_BTC):
                         print("Total gain of {0}%, or {1} satoshi per {2} = {3}"
-                              .format(percent, remove_exponent(str(diff)), settings.COIN, remove_exponent(str(diff))*settings.AMOUNT_TO_TRADE))
+                              .format(percent, diff, settings.COIN, diff*settings.AMOUNT_TO_TRADE))
                     else:
                         print("Total gain of {0}%".format(percent))
                         print("-"*30)
                         print("")
-                        traded = 1 
+                        traded = 1
+                    CUMULATIVE_PROFIT = CUMULATIVE_PROFIT + percent
                 else:
-                    print("Trade conditions met, but lacking liquidity in orderbooks")
+                    print("#Trade conditions met, but lacking liquidity in orderbooks#")
+                    print("")
         
-    elif(trex_bid>nance_ask): # IF bittrex market sell price > binance market buy
+    elif((trex_bid>nance_ask)  and ((settings.FLIP_MODE and Bittrex == 0) or (not settings.FLIP_MODE))): # IF bittrex market sell price > binance market buy
         diff = trex_bid-nance_ask
         percent = (diff/trex_ask)*100
         Binance = 0
         Bittrex = 1
         if(settings.DRY_RUN or settings.DEBUG > 0):
-            print("Bittrex Market SELL Price > Binance Market BUY Price")
+            print("Bittrex SELL Price {0} > Binance BUY Price {1}".format(
+                trex_bid, nance_ask))
             print("Potential Gain: {0}%".format(round(percent, 2)))
             print("Needs to be: {0}%".format(settings.DESIRED_PERCENT_GAIN))
             print("")
@@ -266,7 +254,8 @@ def backend_logic():
                 if(settings.LIQUIDITY_MODULE):
                     liquid = check_liquidity(Binance, Bittrex)
                 else:
-                    liquid = 0
+                    print("Liquidity Module Skipping")
+                    liquid = 1
                 if(liquid > 0):
                     if(not settings.DRY_RUN):
                         sell_trex()
@@ -274,22 +263,36 @@ def backend_logic():
                     print("")
                     print("-"*30)
                     print("Trade Occurred! Sold at Bittrex for {0} \nBought at Binance for {1}"
-                          .format(remove_exponent(str(trex_bid)), nance_ask))
+                          .format(trex_bid, nance_ask))
                     if(settings.GAIN_BTC):
                         print("Total gain of {0}%, or {1} satoshi per {2} = {3}"
-                              .format(percent, remove_exponent(str(diff)), settings.COIN, remove_exponent(str(diff))*settings.AMOUNT_TO_TRADE))
+                              .format(percent, diff, settings.COIN, diff*settings.AMOUNT_TO_TRADE))
                     else:
                         print("Total gain of {0}%".format(percent))
                         print("-"*30)
                         print("")
-                        traded = 1                    
+                        traded = 1
+                    CUMULATIVE_PROFIT = CUMULATIVE_PROFIT + percent
                 else:
-                    print("Trade conditions met, but lacking liquidity in orderbooks")
+                    print("#Trade conditions met, but lacking liquidity in orderbooks#")
+                    print("")
     else:
         if(settings.DRY_RUN or settings.DEBUG > 0):
-            print("Waiting for positive Bid/Ask price difference")
+            diff1 = trex_bid-nance_ask
+            percent1 = (diff1/trex_bid)*100
+            diff2 = nance_bid-trex_ask
+            percent2 = (diff2/nance_bid)*100
             print("")
-    return traded
+            print("Pricing Debug Stats:")
+            print("Binance Sell: {0} | Bittrex Buy: {1} Potential Gain={2}%".format(nance_bid, trex_ask, round(percent2, 2)))
+            print("Bittrex Sell: {0} | Binance Buy: {1} Potential Gain={2}%".format(trex_bid, nance_ask, round(percent1, 2)))
+            print("")
+            if(not settings.FLIP_MODE):
+                print("Waiting for positive Bid/Ask price difference.")
+            else:
+                print("Waiting for opposite trade to be profitable.")
+            print("")
+    return traded, CUMULATIVE_PROFIT
 
 def nance_send_btc(btc_diff):
     '''Send btc from binance '''
@@ -365,17 +368,19 @@ def equalize_balances():
     else:
         pass
 
-def main(COUNTER, TRADE_COUNTER):
+def main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT):
     '''Main function, pull everything together to run'''
     if(enough_balance_to_run() or settings.DRY_RUN):
-        traded = backend_logic()
+        traded = backend_logic(CUMULATIVE_PROFIT)[0]
         if(traded == 1):
             TRADE_COUNTER = TRADE_COUNTER+1
+            CUMULATIVE_PROFIT = backend_logic(CUMULATIVE_PROFIT)[1]
             print("Sleeping after trade.")
             time.sleep(settings.SLEEP_AFTER_TRADE)
         if(COUNTER%10 == 0 and COUNTER != 0):
             print("Run-Count:", COUNTER)
             print("Trade-Count:", TRADE_COUNTER)
+            print("Cumulative Profit % (BOTH balances):", CUMULATIVE_PROFIT/2)
             balance_debug()
         if(traded == 1 and not enough_balance_to_run()):
             if(not settings.DRY_RUN):
@@ -398,11 +403,16 @@ print("")
 balance_debug()
 COUNTER = 0
 TRADE_COUNTER = 0
+RETRY = 0
+CUMULATIVE_PROFIT = 0.0
 while True:
     try:
-        main(COUNTER, TRADE_COUNTER)
+        main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT)
         COUNTER = COUNTER+1
     except:
-        print("Script crashed, retrying......")
-        print_title()
-        main(COUNTER, TRADE_COUNTER)
+        time.sleep(3)
+        while(RETRY<3):
+            print("Script crashed, retrying......")
+            print_title()
+            main(COUNTER, TRADE_COUNTER, CUMULATIVE_PROFIT)
+            RETRY += 1
