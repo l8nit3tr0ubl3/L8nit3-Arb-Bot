@@ -8,6 +8,7 @@ in a real setting on a real account. Do so at your own risk!!!
 
 # Requirements  
 ##  
+- Python 3.x
 - pip install python-bittrex  
 - pip install python-binance  
 - pip install simple_settings  
