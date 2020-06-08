@@ -6,6 +6,12 @@ between crypto pairs at Binance and Bittrex.
 IT IS A WORK IN PROGRESS, and is in no way ready for ANYONE to use  
 in a real setting on a real account. Do so at your own risk!!!
 
+# Requirements  
+##  
+- pip install python-bittrex  
+- pip install python-binance  
+- pip install simple_settings  
+
 # Features:
 ##
 - Uses an external settings file, allow multiple instances to be run  
