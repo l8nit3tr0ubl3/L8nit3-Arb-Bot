@@ -27,6 +27,7 @@ displayed for debugging purposes.
 - Flip-Mode: Once a trade happens, do not trade again until opposite trade can occur.   
 (eg. Bought Binance, wait untill buy Bittrex. Avoid needing to equalize balances.)  
 - Check multiple coin pairs in one instance. 
+-Choose Base to trade against (USDT, ETH, BNB) with LTC-1 , LTC-2, etc (must have -number)
 - Profit-tracking per coin. (percent_earned_per_trade/2 to account for both account balances)  
 - Accounts for trading fees in percentages displayed and in backend calculations  
 
