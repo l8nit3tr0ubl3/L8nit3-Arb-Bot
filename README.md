@@ -36,8 +36,6 @@ displayed for debugging purposes.
     - Multiple more exchange options.  
     - ~Create a list of pairs in settings and run all in one instance of the script.~ - DONE  
     - Cleaner, faster running for better results and more stable profit.  
-- Auto balance equalization after trading for continuous 24/7/365 running (partially implemented)  
-- Option to exchange BTC to USDT/USDC/DOGE to pay less fees during equalization.  
 
 # Screenshot
 ##
