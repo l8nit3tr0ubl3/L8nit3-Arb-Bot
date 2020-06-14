@@ -2,11 +2,12 @@ BINANCE_API_KEY = 'API_KEY_HERE'
 BINANCE_API_SECRET = 'API_SECRET_HERE'
 BITTREX_API_KEY = 'API_KEY_HERE'
 BITTREX_API_SECRET = 'API_SECRET_HERE'
-COIN_LIST = {'NXS':['150', '2.5'],
-             'KMD': ['10', '3.2'],
-             'DOGE': ['2000', '6'],
-             'LTC': ['0.1', '4'],
-             'PIVX':['25', '2']} #Coin : Amount : percent
+COIN_LIST = {'NXS':['100', '3', 'BTC'],
+             'KMD': ['15', '1.5', 'BTC'],
+             'LTC': ['0.15', '4', 'BTC'],
+             'LTC-2': ['0.15', '4', 'ETH'],
+             'DOGE': ['2000', '6', 'BTC'],
+             'PIVX':['30', '2', 'BTC']} #Coin : Amount : percent : BASE
 DEBUG = 1 #0=off 1=stats 2=stats+errors
 DESIRED_CYCLES = 1 #Number of trades before equalize, if FLIP_MODE set to 0
 DRY_RUN = False #No withdrawl or trades, just test
