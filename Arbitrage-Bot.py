@@ -35,7 +35,6 @@ def print_title():
     print("Flip mode active:", settings.FLIP_MODE)
     print("Liquidity Module Active:", settings.LIQUIDITY_MODULE)
     print("Stacking BTC Mode:", settings.GAIN_BTC)
-    print("Withdrawls Enabled:", settings.ENABLE_WITHDRAWLS)
     print("_"*30)
     print("")
     time.sleep(4)
@@ -213,8 +212,8 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
         if(settings.DRY_RUN or settings.DEBUG > 0):
             print("\nBinance {2} SELL Price {0} > Bittrex {2} BUY Price {1}".format(
                 nance_bid, trex_ask, COIN))
-            print("Potential Gain: {0}%".format(round(percent-0.35, 2)))
-            print("Needs to be: {0}% including trade fees".format(DESIRED_PERCENT_GAIN + 0.0035))
+            print("Potential Gain: {0}% - fees = {1}".format(round(percent, 2), round(percent-0.35, 2)))
+            print("Needs to be: {0}% including trade fees".format(DESIRED_PERCENT_GAIN + 0.35))
             print("")
         if percent > (DESIRED_PERCENT_GAIN + 0.35):
             now = datetime.datetime.now()
@@ -254,8 +253,8 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
         if(settings.DRY_RUN or settings.DEBUG > 0):
             print("\nBittrex {2} SELL Price {0} > Binance {2} BUY Price {1}".format(
                 trex_bid, nance_ask, COIN))
-            print("Potential Gain: {0}%".format(round(percent-0.35, 2)))
-            print("Needs to be: {0}% (including trade fees)".format(DESIRED_PERCENT_GAIN + 0.0035))
+            print("Potential Gain: {0}% - fees = {1}".format(round(percent, 2), round(percent-0.35, 2)))
+            print("Needs to be: {0}% (including trade fees)".format(DESIRED_PERCENT_GAIN + 0.35))
             print("")
         if percent > (DESIRED_PERCENT_GAIN + 0.35):
             value = AMOUNT_TO_TRADE*(1.0+(DESIRED_PERCENT_GAIN/100))
@@ -301,80 +300,6 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
                 print("Waiting for opposite trade to be profitable.")
     return traded
 
-def nance_send_btc(btc_diff):
-    '''Send btc from binance '''
-    binance_btc_address = myBinance.get_deposit_address(asset='BTC')['address']
-    try:
-        if not settings.DRY_RUN:
-            send = myBinance.withdraw(asset='BTC',address=binance_btc_address,amount=btc_diff)
-            print(send)
-        else:
-            print("Dry Run - nance btc withdrawl amount:", btc_diff)
-    except Exception as error:
-        print("Error occurred binance, withdraw_btc:", error)
-
-def trex_send_btc(btc_diff):
-    '''Send btc from bittrex '''
-    bittrex_btc_address = myBittrex.get_deposit_address('BTC')['result']['Address']
-    try:
-        if not settings.DRY_RUN:
-            send = myBittrex.withdraw('BTC', btc_diff, bittrex_btc_address)
-            print(send)
-        else:
-            print("Dry Run - trex btc withdrawl amount:", btc_diff)
-    except Exception as error:
-        print("Error occurred bittrex, withdraw_btc:", error)
-    
-def nance_send_coin(coin_diff, COIN):
-    '''Send coins from binance'''
-    binance_coin_address = myBinance.get_deposit_address(asset=COIN)['address']
-    try:
-        if not settings.DRY_RUN:
-            send = myBinance.withdraw(asset='BTC',address=binance_coin_address,amount=coin_diff)
-            print(send)
-        else:
-            print("Dry Run - nance", COIN, "withdrawl amount:", coin_diff)
-    except Exception as error:
-        print("Error occurred binance, withdraw_coin:", error)
-
-def trex_send_coin(coin_diff, COIN):
-    '''Send coins from bittrex'''
-    bittrex_coin_address = myBittrex.get_deposit_address(COIN)['result']['Address']
-    try:
-        if not settings.DRY_RUN:
-            send = myBittrex.withdraw(COIN, coin_diff, bittrex_coin_address)
-            print(send)
-        else:
-            print("Dry Run - trex", COIN, "withdrawl amount:", coin_diff)
-    except Exception as error:
-        print("Error occurred bittrex, withdraw_coin:", error)
-
-def equalize_balances(COIN):
-    '''Equalize balances at both exchanges for next run'''
-    nance_btc = float(get_nance_balance(COIN)[0])
-    nance_coin = float(get_nance_balance(COIN)[1])
-    trex_btc = float(get_trex_balance(COIN)[0])
-    trex_coin = float(get_trex_balance(COIN)[1])
-    btc_high = max(nance_btc, trex_btc)
-    coin_high = max(nance_coin, trex_coin)
-    if(nance_btc > 0 and trex_btc > 0):
-        if(btc_high == nance_btc):
-            btc_diff = (nance_btc-trex_btc)/2
-            nance_send_btc(btc_diff)
-        else:
-            btc_diff = (trex_btc-nance_btc)/2
-            trex_send_btc(btc_diff)
-            
-        if(coin_high == nance_coin):
-            coin_diff = (nance_coin-trex_coin)/2
-            nance_send_coin(coin_diff)
-        else:
-            coin_diff = (trex_coin-nance_coin)/2
-            trex_send_coin(coin_diff)
-        time.sleep(3600)
-    else:
-        pass
-
 def main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
     '''Main function, pull everything together to run'''
     if(enough_balance_to_run(COIN) or settings.DRY_RUN):
@@ -383,14 +308,10 @@ def main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
             TRADE_COUNTER = TRADE_COUNTER+1
             print("Sleeping after trade.")
             time.sleep(settings.SLEEP_AFTER_TRADE)
-        if(traded == 1 and not enough_balance_to_run(COIN) and settings.ENABLE_WITHDRAWLS):
-            if not settings.DRY_RUN:
-                equalize_balances(COIN)
-                balance_debug(COIN)
         elif traded == 0:
             pass
     else:
-        print("Please Check Balances!")
+        print("Please Check {0} Balances!".format(COIN))
 
 def print_needed(COIN, AMOUNT_TO_TRADE):
     '''Print amount of BTC/COIN needed to trade'''
