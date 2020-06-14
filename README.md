@@ -1,6 +1,6 @@
-# L8nit3's Arbitration Bot
+# L8nit3's Arbitrage Bot
 ##
-This is currently used to find arbitration trade oppourtunities  
+This is currently used to find arbitrage trade oppourtunities  
 between crypto pairs at Binance and Bittrex.
 
 IT IS A WORK IN PROGRESS, and is in no way ready for ANYONE to use  
