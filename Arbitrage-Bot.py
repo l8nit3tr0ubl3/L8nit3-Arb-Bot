@@ -372,6 +372,8 @@ while True:
             else:
                 profit_amount = PROFIT_TRACKER[Original_Coin+BASE]/2
             print("Profit Tracking {0}: {1}% (BOTH EXCHANGES)".format(COIN, profit_amount))
+            if "-" in COIN:
+                COIN = COIN.split("-", 1)[0]
             balance_debug(COIN, BASE)
     time.sleep(settings.SLEEP_BETWEEN_CYCLE)
     COUNTER = COUNTER+1
