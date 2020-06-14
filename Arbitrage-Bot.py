@@ -34,6 +34,7 @@ def print_title():
     print("Dry run mode active:", settings.DRY_RUN)
     print("Flip mode active:", settings.FLIP_MODE)
     print("Liquidity Module Active:", settings.LIQUIDITY_MODULE)
+    print("Stacking BTC Mode:", settings.GAIN_BTC)
     print("Withdrawls Enabled:", settings.ENABLE_WITHDRAWLS)
     print("_"*30)
     print("")
@@ -208,9 +209,9 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
         
     if((nance_bid>trex_ask) and ((settings.FLIP_MODE and BUY_LIST[COIN]['Binance'] == 1) or (not settings.FLIP_MODE))):
         diff = nance_bid-trex_ask
-        percent = (diff/nance_ask)*100
+        percent = (diff/trex_ask)*100
         if(settings.DRY_RUN or settings.DEBUG > 0):
-            print("Binance {2} SELL Price {0} > Bittrex {2} BUY Price {1}".format(
+            print("\nBinance {2} SELL Price {0} > Bittrex {2} BUY Price {1}".format(
                 nance_bid, trex_ask, COIN))
             print("Potential Gain: {0}%".format(round(percent-0.35, 2)))
             print("Needs to be: {0}% including trade fees".format(DESIRED_PERCENT_GAIN + 0.0035))
@@ -249,9 +250,9 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN):
         
     elif((trex_bid>nance_ask)  and ((settings.FLIP_MODE and BUY_LIST[COIN]['Bittrex'] == 1) or (not settings.FLIP_MODE))):
         diff = trex_bid-nance_ask
-        percent = (diff/trex_ask)*100
+        percent = (diff/nance_ask_ask)*100
         if(settings.DRY_RUN or settings.DEBUG > 0):
-            print("Bittrex {2} SELL Price {0} > Binance {2} BUY Price {1}".format(
+            print("\nBittrex {2} SELL Price {0} > Binance {2} BUY Price {1}".format(
                 trex_bid, nance_ask, COIN))
             print("Potential Gain: {0}%".format(round(percent-0.35, 2)))
             print("Needs to be: {0}% (including trade fees)".format(DESIRED_PERCENT_GAIN + 0.0035))
@@ -409,7 +410,7 @@ for COIN in settings.COIN_LIST:
     print_needed(COIN, AMOUNT_TO_TRADE)
     balance_debug(COIN)
     PROFIT_TRACKER[COIN] = 0.0
-    BUY_LIST[COIN] = {'Bittrex':0, 'Binance':0}
+    BUY_LIST[COIN] = {'Bittrex':1, 'Binance':1}
 
 while True:
     print("_"*30)
@@ -420,7 +421,7 @@ while True:
             main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN)
         except:
             time.sleep(3)
-            while(RETRY<3):
+            while(RETRY<999999999999):
                 print("Script crashed, retrying......")
                 print_title()
                 main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN)
