@@ -39,4 +39,4 @@ displayed for debugging purposes.
 
 # Screenshot
 ##
-![image of bot](https://i.imgur.com/g9Cwulr.jpg)
+![image of bot](https://i.imgur.com/AJkXIa5.jpg)
