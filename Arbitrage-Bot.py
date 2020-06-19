@@ -185,13 +185,13 @@ def sell_nance(COIN, BASE):
 def check_liquidity(COIN, AMOUNT_TO_TRADE, BASE):
     '''Used to check orderbook before making a trade to ensure liquidity for trade. '''
     liquid = 0
-    if BUY_LIST[COIN]['Binance'] == 1:
+    if BUY_LIST[COIN+BASE]['Binance'] == 1:
         Bittrex_Ask_Orderbook = float(myBittrex.get_orderbook(make_coin_pair(COIN, BASE)[0])['result']['sell'][0]['Quantity'])
         Binance_Bid_Orderbook = float(myBinance.get_order_book(symbol=make_coin_pair(COIN, BASE)[1])['bids'][0][1])
         if(Bittrex_Ask_Orderbook > AMOUNT_TO_TRADE and Binance_Bid_Orderbook > (AMOUNT_TO_TRADE*1.05)):
             liquid = 1
 
-    elif BUY_LIST[COIN]['Bittrex'] == 1:
+    elif BUY_LIST[COIN+BASE]['Bittrex'] == 1:
         Bittrex_Bid_Orderbook = myBittrex.get_orderbook(make_coin_pair(COIN, BASE)[0])['result']['buy'][0]['Quantity']
         Binance_Ask_Orderbook = myBinance.get_order_book(symbol=make_coin_pair(COIN, BASE)[1])['asks'][0][1]
         if(Bittrex_Bid_Orderbook > AMOUNT_TO_TRADE and Binance_Ask_Orderbook > (AMOUNT_TO_TRADE*1.05)):
@@ -200,10 +200,11 @@ def check_liquidity(COIN, AMOUNT_TO_TRADE, BASE):
         
 def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN, BASE, Original_Coin):
     '''Determine high/low, diff percent, and if trade is needed'''
-    trex_ask = get_prices(COIN, BASE)[0]
-    trex_bid = get_prices(COIN, BASE)[1]
-    nance_ask = get_prices(COIN, BASE)[2]
-    nance_bid = get_prices(COIN, BASE)[3]
+    price = get_prices(COIN, BASE)
+    trex_ask = price[0]
+    trex_bid = price[1]
+    nance_ask = price[2]
+    nance_bid = price[3]
     traded = 0
         
     if((nance_bid>trex_ask) and ((settings.FLIP_MODE and BUY_LIST[Original_Coin+BASE]['Binance'] == 1) or (not settings.FLIP_MODE))):
@@ -290,8 +291,8 @@ def backend_logic(COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN, BASE, Original_Co
             diff2 = nance_bid-trex_ask
             percent2 = (diff2/nance_bid)*100
             print("")
-            print("{3} Binance Sell: {0}{4} | Bittrex Buy: {1}{4} | Potential Gain={2}%".format(nance_bid, trex_ask, round(percent2-0.35, 2), COIN, BASE))
-            print("{3} Bittrex Sell: {0}{4} | Binance Buy: {1}{4} | Potential Gain={2}%".format(trex_bid, nance_ask, round(percent1-0.35, 2), COIN, BASE))
+            print("{3} Binance Sell: {0} {4} | Bittrex Buy: {1} {4} | Potential Gain={2}%".format(nance_bid, trex_ask, round(percent2-0.35, 2), COIN, BASE))
+            print("{3} Bittrex Sell: {0} {4} | Binance Buy: {1} {4} | Potential Gain={2}%".format(trex_bid, nance_ask, round(percent1-0.35, 2), COIN, BASE))
             if not settings.FLIP_MODE:
                 print("Waiting for positive Bid/Ask price difference.")
             elif(settings.FLIP_MODE and traded == 1):
@@ -355,9 +356,9 @@ while True:
         try:
             main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN, BASE, Original_Coin)
         except Exception as e:
-            time.sleep(3)
             while(RETRY<999999999999):
                 print("Script crashed,{0} \nretrying......".format(e))
+                time.sleep(10)
                 print_title()
                 main(COUNTER, TRADE_COUNTER, COIN, AMOUNT_TO_TRADE, DESIRED_PERCENT_GAIN, BASE, Original_Coin)
                 RETRY += 1
@@ -368,13 +369,16 @@ while True:
         print("Trade-Count:", TRADE_COUNTER)
         for COIN in settings.COIN_LIST:
             BASE = settings.COIN_LIST[COIN][2]
+            if "-" in COIN:
+            	Original_Coin = COIN
+            	COIN = COIN.split("-", 1)[0]
+            else:
+            	Original_Coin = COIN
             if(PROFIT_TRACKER[Original_Coin+BASE] == 0):
                 profit_amount = 0
             else:
                 profit_amount = PROFIT_TRACKER[Original_Coin+BASE]
-            print("Profit Tracking {0}: {1} {2}".format(COIN, profit_amount, BASE))
-            if "-" in COIN:
-                COIN = COIN.split("-", 1)[0]
+            print("Profit Tracking {0}: {1} {2}".format(Original_Coin, profit_amount, BASE))
             balance_debug(COIN, BASE)
     time.sleep(settings.SLEEP_BETWEEN_CYCLE)
     COUNTER = COUNTER+1
